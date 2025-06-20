@@ -3,7 +3,10 @@ const userModel = require("../model/user")
 const getAllUsers = async (req, res) => {
     try {
         const users = await userModel.find({}).limit(req.query._end)
-        res.status(200).json(users)
+        if(!users){
+            return res.status(500).json({ message: "User not found" })
+        }
+        return res.status(200).json(users)
     } catch (error) {
         res.status(500).json({ message: error.message })
     }
@@ -12,11 +15,11 @@ const getAllUsers = async (req, res) => {
 const createUser = async (req, res) => {
     try {
         const { name, email, avatar } = req.body
-        const userExits = await userModel.findOne({ email })
-        if (userExits) {
-            return res.status(200).json(userExits)
+        const userExists = await userModel.findOne({ email })
+        if (userExists) {
+            return res.status(200).json(userExists)
         }
-        const newUser = new userModel.create({ name, email, avatar })
+        const newUser = await userModel.create({ name, email, avatar })
         return res.status(200).json(newUser)
     } catch (error) {
         return res.status(400).json({ message: error.message })

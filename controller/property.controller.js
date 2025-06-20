@@ -39,9 +39,9 @@ const getAllProperties = async (req, res) => {
 
 const getPropertyDetail = async (req, res) => {
     const { id } = req.params
-    const propertyExits = await propertyModel.findOne({ _id: id }).populate('creator')
-    if (propertyExits) {
-        return res.status(200).json(propertyExits)
+    const propertyExists = await propertyModel.findOne({ _id: id }).populate('creator')
+    if (propertyExists) {
+        return res.status(200).json(propertyExists)
     }
     else {
         return res.status(400).json({ message: "Property not found" })
@@ -113,15 +113,15 @@ const updateProperty = async (req, res) => {
 const deleteProperty = async (req, res) => {
     try {
         const { id } = req.params
-        const propertyExits = await propertyModel.findById({ _id: id }).populate('creator')
-        if (!propertyExits) {
+        const propertyExists = await propertyModel.findById({ _id: id }).populate('creator')
+        if (!propertyExists) {
             throw new Error("Property not found")
         }
         const session = await mongoose.startSession()
         session.startTransaction()
         await propertyModel.deleteOne({ _id: id },{session})
-        propertyExits.creator.allProperties.pull(propertyExits)
-        await propertyExits.creator.save({session})
+        propertyExists.creator.allProperties.pull(propertyExists)
+        await propertyExists.creator.save({session})
         await session.commitTransaction()
         return res.status(200).json({message:"Property deleted successfully"})
     } catch (error) {
