@@ -14,21 +14,21 @@ cloudinary.config({
 
 
 const getAllProperties = async (req, res) => {
-    const { _end, _order, _start, _sort, title_like = '', propertyType = '' } = req.query
+    const { _end, _order, _start, _sort, title_like = '', propertyType = '' } = req.query // ดึงค่ามาจาก query โดย 2 ตัวหลังถ้า client ไม่ใส่มาจะกลายเป็น default ''
     const query = {}
     if (title_like !== '') {
-        query.title_like = { $regax: title_like, $option: "1" }
+        query.title_like = { $regax: title_like, $options: "1" }
     }
     if (propertyType !== '') {
-        query.propertyType = { $regax: propertyType, $option: "1" }
+        query.propertyType = { $regax: propertyType, $options: "1" }
     }
     try {
-        const count = await propertyModel.countDocuments({ query })
-        const properties = await propertyModel.find(query)
+        const count = await propertyModel.countDocuments({ query }) // นับจำนวน prpoerty ทั้งหมดที่ตรงกับเงื่อนไข
+        const properties = await propertyModel.find(query) // find data ที่ตรงกับ query
             .limit(_end)
-            .skip(_start)
-            .sort({ [_sort]: _order === "asc" ? 1 : -1 })
-        res.header("x-total-count", count)
+            .skip(_start) // ข้ามข้อมูล
+            .sort({ [_sort]: _order === "asc" ? 1 : -1 }) // เป็น dynamic key คือเอาตัวแปรมาใส่ key และ asc = 1 , desc = -1
+        res.header("x-total-count", count) // เอา count มาแสดง
         res.header("Access-Control-Expose-Headers", "x-total-count")
         res.status(200).json(properties)
 
@@ -39,7 +39,7 @@ const getAllProperties = async (req, res) => {
 
 const getPropertyDetail = async (req, res) => {
     const { id } = req.params
-    const propertyExists = await propertyModel.findOne({ _id: id }).populate('creator')
+    const propertyExists = await propertyModel.findOne({ _id: id }).populate('creator') // นำ FK ที่มีชื่อว่า creator มาด้วย
     if (propertyExists) {
         return res.status(200).json(propertyExists)
     }
@@ -59,12 +59,12 @@ const createProperty = async (req, res) => {
             email } = req.body
         const session = await mongoose.startSession()
         session.startTransaction()
-        const user = await userModel.findOne({ email }).session(session)
+        const user = await userModel.findOne({ email }).session(session) //เพื่อให้การอ่านข้อมูล user นี้อยู่ใน transaction session เดียวกับการสร้าง property และการอัปเดต user ถ้าไม่ใช้ .session(session) การอ่าน user จะอยู่นอก transaction ซึ่งอาจทำให้เกิดปัญหา consistency ได้ในบางกรณี (เช่น มีการแก้ไขข้อมูล user เดียวกันจาก process อื่นระหว่าง transaction)
         if (!user) {
             throw new Error("User not found")
         }
         const photoURL = await cloudinary.uploader.upload(photo)
-        const newProperty = new propertyModel({
+        const newProperty = new propertyModel({ // คือการสร้าง instance ของ model ที่ชื่อ propertyModel ซึ่ง propertyModel ถูกสร้างมาจาก Property Schema
             title,
             propertyType,
             description,
@@ -73,9 +73,11 @@ const createProperty = async (req, res) => {
             photo: photoURL.url,
             creator: user._id
         })
+        await newProperty.save({ session }); // save newProperty ให้อยู่ใน session นี้
+        user.allProperties = user.allProperties || []; // ป้องกัน undefined
         user.allProperties.push(newProperty._id)
-        await user.save({ session })
-        await session.commitTransaction()
+        await user.save({ session }) //// save user ให้อยู่ใน session นี้
+        await session.commitTransaction() // จบ transaction
         return res.status(200).json({ message: "Property created successfully" })
     } catch (error) {
         return res.status(500).json({ message: error.message })

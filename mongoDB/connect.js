@@ -1,3 +1,6 @@
+// ทำการ connect with MongoDB
+
+
 const mongoose = require('mongoose')
 
 exports.connectDB = async (url) => {
