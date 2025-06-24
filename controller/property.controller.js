@@ -17,21 +17,20 @@ const getAllProperties = async (req, res) => {
     const { _end, _order, _start, _sort, title_like = '', propertyType = '' } = req.query // ดึงค่ามาจาก query โดย 2 ตัวหลังถ้า client ไม่ใส่มาจะกลายเป็น default ''
     const query = {}
     if (title_like !== '') {
-        query.title_like = { $regax: title_like, $options: "1" }
+        query.title_like = { $regex: title_like, $options: "i" }
     }
     if (propertyType !== '') {
-        query.propertyType = { $regax: propertyType, $options: "1" }
+        query.propertyType = { $regex: propertyType, $options: "i" }
     }
     try {
-        const count = await propertyModel.countDocuments({ query }) // นับจำนวน prpoerty ทั้งหมดที่ตรงกับเงื่อนไข
-        const properties = await propertyModel.find(query) // find data ที่ตรงกับ query
-            .limit(_end)
-            .skip(_start) // ข้ามข้อมูล
-            .sort({ [_sort]: _order === "asc" ? 1 : -1 }) // เป็น dynamic key คือเอาตัวแปรมาใส่ key และ asc = 1 , desc = -1
-        res.header("x-total-count", count) // เอา count มาแสดง
+        const count = await propertyModel.countDocuments({query}) // นับจำนวน prpoerty ทั้งหมดที่ตรงกับเงื่อนไข
+        const properties = await propertyModel.find(query)
+            .limit(Number(_end) || 0)
+            .skip(Number(_start) || 0) // ข้ามข้อมูล
+            .sort(_sort ? { [_sort]: _order === "asc" ? 1 : -1 } : {}) // เป็น dynamic key คือเอาตัวแปรมาใส่ key และ asc = 1 , desc = -1
+        res.header("x-total-count", count) // เอา count มาแสดง 
         res.header("Access-Control-Expose-Headers", "x-total-count")
         res.status(200).json(properties)
-
     } catch (error) {
         res.status(500).json({ message: error.message })
     }
@@ -121,14 +120,14 @@ const deleteProperty = async (req, res) => {
         }
         const session = await mongoose.startSession()
         session.startTransaction()
-        await propertyModel.deleteOne({ _id: id },{session})
+        await propertyModel.deleteOne({ _id: id }, { session })
         propertyExists.creator.allProperties.pull(propertyExists)
-        await propertyExists.creator.save({session})
+        await propertyExists.creator.save({ session })
         await session.commitTransaction()
-        return res.status(200).json({message:"Property deleted successfully"})
+        return res.status(200).json({ message: "Property deleted successfully" })
     } catch (error) {
-        return res.status(500).json({message:error.message})
+        return res.status(500).json({ message: error.message })
     }
 }
 
-module.exports = {getAllProperties,getPropertyDetail,createProperty,updateProperty,deleteProperty}
+module.exports = { getAllProperties, getPropertyDetail, createProperty, updateProperty, deleteProperty }
